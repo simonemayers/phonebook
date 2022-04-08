@@ -1,5 +1,7 @@
 const http = require("http"); 
 const express = require("express")
+const morgan = require('morgan')
+
 const app = express()
 
 let persons = [
@@ -25,19 +27,15 @@ let persons = [
     }
 ]
 
-//   const app = http.createServer((req, res) => {
-//     res.writeHead(200, {"Content-Type": "application/json"})
-//     res.end(JSON.stringify(notes))
-// })
 
-app.get("/", (req, res) => {
+app.get("/", morgan("tiny"), (req, res) => {
     res.send("<h1>Hello World!</h1>")
 })
 
-app.get("/api/persons", (req, res) => {
+app.get("/api/persons", morgan("tiny"), (req, res) => {
     res.json(persons)
 })
-app.get("/api/persons/:id", (req, res) => {
+app.get("/api/persons/:id", morgan("tiny"), (req, res) => {
     let id = req.params.id
     let person = persons.find(p => p.id == id)
     if(person){
@@ -46,34 +44,42 @@ app.get("/api/persons/:id", (req, res) => {
         res.status(404).end()
     }
 })
-app.get("/info", (req, res) => {
+app.get("/info", morgan("tiny"), (req, res) => {
     res.json(`Phonebook has info for ${persons.length} people ${new Date()}`)
 })
 
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", morgan("tiny"), (req, res) => {
     let {id} = req.params
     let person = persons.filter(p => p.id != id)
     res.send(person)
 })
+
+app.use(express.urlencoded({extended: true}))
+app.use(express.json())
+morgan.token('body', (req, res) => JSON.stringify(req.body));
+app.use(morgan(':method :url :body'))
 
 app.post("/api/persons", (req, res) => {
     let id = Math.ceil(Math.random()* 99999)
     newPerson = 
         {
             "id": id, 
-            name: "", 
+            name: "Simone", 
             number:""
         }
     let names = []
     persons.map(p => names.push(p.name))
     if(names.find(n => n == newPerson.name)){
-        res.status(409).send(`That person already exists`)
+        req.body = `That person already exists`
+        res.status(409).json(`That person already exists`)
     } else if(newPerson.name || newPerson.number){
         persons.push(newPerson)
-        res.send(persons)
+        req.body = persons
+        res.json(persons)
     } 
     else {
-        res.status(400).send(`Please enter both a name and number`)
+        req.body = `Please enter both a name and number`
+        res.status(400).json(`Please enter both a name and number`)
     }
 })
 
@@ -82,3 +88,4 @@ const port = 3001;
 app.listen(port, () => {
     console.log(`server running on port ${port}`)
 })
+app.use(morgan("dev"))
